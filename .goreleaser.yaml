@@ -48,7 +48,7 @@ archives:
       - goos: windows
         format: zip
     files: 
-      - dependLicenses/*
+      - modLicenses/**/*
       - LICENSE
       - src: 'installer/*.bat'
         dst: .
