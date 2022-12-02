@@ -115,7 +115,6 @@ func (h Handler) StartClient(rdClientHwnd win.HWND) (win.HWND, error) {
 
 			win.TranslateMessage(&msg)
 			win.DispatchMessage(&msg)
-			// debug.Debugf("disp: %+v \n", msg)
 		}
 	}()
 

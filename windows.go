@@ -35,18 +35,21 @@ func StartClient() {
 
 	var scanner = bufio.NewScanner(os.Stdin)
 
-restart:
-	scanner.Scan()
-	var line = scanner.Text()
+	for {
+		scanner.Scan()
+		var line = scanner.Text()
 
-	if !strings.HasSuffix(line, strconv.Itoa(PROTOCOL_VERSION)) {
+		if strings.HasSuffix(line, strconv.Itoa(PROTOCOL_VERSION)) {
+			break
+		}
+
 		debug.Debugln("error!")
 		debug.Debugln("Get: ", line)
 		debug.Debugln("SendStatus:INVALID_PROTOCOL_VERSION")
-		fmt.Printf("Status:INVALID_PROTOCOL_VERSION\n")
-		goto restart
-	}
 
+		// send invalid protocol version response
+		fmt.Printf("Status:INVALID_PROTOCOL_VERSION\n")
+	}
 	debug.Debugln("ok")
 
 	// response
@@ -147,7 +150,7 @@ func StartServer() {
 
 	debug.Debugln("ok")
 
-	debug.Debugf("Wait for host response...")
+	debug.Debugf("Wait for client response...")
 
 restart:
 	// Response
@@ -160,14 +163,14 @@ restart:
 	line = MustReadln()
 	if !strings.HasPrefix(line, "Status:") {
 		debug.Debugln("error!")
-		fmt.Println("Server respond with illigal format: ", line)
+		fmt.Println("Client respond with illigal format: ", line)
 		return
 	}
 
 	if line != "Status:OK" {
 		debug.Debugln("error!")
 		debug.Debugln("ProtocolError:", line)
-		fmt.Println("Server Protocol Error: ", line)
+		fmt.Println("Client Protocol Error: ", line)
 		return
 	}
 
@@ -237,6 +240,7 @@ restart:
 			}
 		case keymap.EV_TYPE_MOUSE:
 			switch eventInput {
+			// Mouse Right
 			case 0x02:
 				var mouseInput = win.MOUSE_INPUT{
 					Type: win.INPUT_MOUSE,
@@ -256,6 +260,8 @@ restart:
 				}
 
 				win.SendInput(1, unsafe.Pointer(&mouseInput), int32(unsafe.Sizeof(win.MOUSE_INPUT{})))
+
+			// Mouse Left
 			case 0x01:
 				var mouseInput = win.MOUSE_INPUT{
 					Type: win.INPUT_MOUSE,
@@ -275,6 +281,8 @@ restart:
 				}
 
 				win.SendInput(1, unsafe.Pointer(&mouseInput), int32(unsafe.Sizeof(win.MOUSE_INPUT{})))
+
+			// Mouse Middle
 			case 0x04:
 				var mouseInput = win.MOUSE_INPUT{
 					Type: win.INPUT_MOUSE,

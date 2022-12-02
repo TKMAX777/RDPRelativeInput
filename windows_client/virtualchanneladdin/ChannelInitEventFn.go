@@ -71,10 +71,10 @@ func ChannelInitEventFn(ppInitHandle *HANDLE, ChannelEvent CHANNEL_INIT_EVENT_TY
 		}
 
 		go func() {
-			// get a client header
+			// get a server header
 			debug.Debugln("Scan started")
 
-			// Response
+			// Request from server
 			for {
 				var line = MustReadln()
 				if line != "RDPRelativeInput" {

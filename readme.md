@@ -9,7 +9,7 @@ This program is designed to allow relative input in an RDP session by wrapping a
 ### Windows
 
 1. Download server and client programs from Releases<br>
-[Download](https://github.com/TKMAX777/RDPRelativeInput/releases)
+[Releases](https://github.com/TKMAX777/RDPRelativeInput/releases)
 
 2. Run `install.bat` on the client machine.
 
@@ -36,6 +36,6 @@ Run these commands on powershell.
 ```powershell
 go build .\cmd\RelativeInputClient
 go build .\cmd\RelativeInputServer
-go build -buildmode=c-shared  -o .\RelativeInput.dll .\windows_client\virtualchannel
+go build -buildmode=c-shared  -o .\RelativeInput.dll .\windows_client\virtualchanneladdin
 installer\install.bat
 ```

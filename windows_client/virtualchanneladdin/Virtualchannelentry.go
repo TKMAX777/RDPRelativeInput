@@ -27,6 +27,7 @@ func VirtualChannelEntry(pEntryPoints *uintptr) bool {
 		}
 	}()
 
+	// Parse entry points struct
 	EntryPoints = *(*CHANNEL_ENTRY_POINTS)(unsafe.Pointer(pEntryPoints))
 
 	debug.Debugf("EntryPoints: %+v\n", EntryPoints)
@@ -39,6 +40,7 @@ func VirtualChannelEntry(pEntryPoints *uintptr) bool {
 	}
 	debug.Debugf("cd: %+v\n", cd)
 
+	// Create a virtual channel
 	err := EntryPoints.VirtualChannelInit.Call(
 		&ChannelHandle, cd, 1, 1, ChannelInitEventFn,
 	)
