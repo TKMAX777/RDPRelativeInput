@@ -1,8 +1,0 @@
-dist/
-start.sh
-.vscode
-*.exe
-main
-*.dll
-*~
-*.h
