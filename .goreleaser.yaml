@@ -49,9 +49,6 @@ archives:
     files: 
       - modLicenses/**/*
       - LICENSE
-      - src: 'installer/*.bat'
-        dst: .
-        strip_parent: true
   - 
     id: "ClientArchive"
     builds:
@@ -67,6 +64,9 @@ archives:
     files: 
       - modLicenses/**/*
       - LICENSE
+      - src: 'installer/*.bat'
+        dst: .
+        strip_parent: true
 checksum:
   name_template: 'checksums.txt'
 snapshot:
