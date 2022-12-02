@@ -18,6 +18,8 @@ builds:
       - CGO_ENABLED=1
       - CC=x86_64-w64-mingw32-gcc
       - CXX=x86_64-w64-mingw32-g++
+    goarch:
+      - amd64
     goos:
       - windows
     buildmode: "c-shared" 
@@ -28,6 +30,8 @@ builds:
     binary: RelativeInputClient
     env:
       - CGO_ENABLED=0
+    goarch:
+      - amd64
     goos:
       - windows
 archives:

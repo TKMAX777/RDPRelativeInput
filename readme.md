@@ -29,7 +29,7 @@ This program is designed to allow relative input in an RDP session by wrapping a
   
 ## Build
 
-GCC installation is required to create add-ins for mstsc.exe.
+MinGW installation is required to create add-ins for mstsc.exe.
 
 Run command these commands on powershell.
 
