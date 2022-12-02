@@ -11,7 +11,7 @@ This program is designed to allow relative input in an RDP session by wrapping a
 1. Download server and client programs from Releases<br>
 [Download](https://github.com/TKMAX777/RDPRelativeInput/releases)
 
-2. Run `install.bat` 
+2. Run `install.bat` on the client machine.
 
 ## Usage
 
