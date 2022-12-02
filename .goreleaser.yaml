@@ -50,8 +50,9 @@ archives:
     files: 
       - dependLicenses/*
       - LICENSE
-      - src: installer/*
+      - src: 'installer/*.bat'
         dst: .
+        strip_parent: true
   - 
     id: "ClientArchive"
     builds:
