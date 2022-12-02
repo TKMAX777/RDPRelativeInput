@@ -1,4 +1,4 @@
-# RDPRemoteRelativeInput
+# RDPRelativeInput
 ## About This Program
 This program is designed to allow relative input in an RDP session by wrapping an existing remote desktop client window with another window and sending the client's input information using an RDP Virtual Channel. Currently, only sessions from a Windows machine to a Windows machine is supported.
 
