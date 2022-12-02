@@ -20,7 +20,7 @@ This program is designed to allow relative input in an RDP session by wrapping a
 
 1. Open Remote Desktop Connection and connect to your server like usual and have it in Maximize Windowed (**NOT FULL SCREEN**)
 
-2. Run `RelativeInputClient.exe`
+2. Run `RelativeInputServer.exe` on host
 
 3. Enjoy!
 
