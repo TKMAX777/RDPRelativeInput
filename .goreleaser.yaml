@@ -50,7 +50,8 @@ archives:
     files: 
       - dependLicenses/*
       - LICENSE
-      - installer/*
+      - src: installer/*
+        dst: .
   - 
     id: "ClientArchive"
     builds:
