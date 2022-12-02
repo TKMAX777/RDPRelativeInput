@@ -8,8 +8,6 @@ builds:
     binary: RelativeInputServer
     env:
       - CGO_ENABLED=0
-    goarch:
-      - amd64
     goos:
       - windows
   - 
@@ -22,8 +20,6 @@ builds:
       - CXX=x86_64-w64-mingw32-g++
     goos:
       - windows
-    goarch:
-      - amd64
     buildmode: "c-shared" 
     flags: -buildmode=c-shared
   - 
