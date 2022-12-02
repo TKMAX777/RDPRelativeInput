@@ -2,7 +2,7 @@
 ## About This Program
 This program is designed to allow relative input in an RDP session by wrapping an existing remote desktop client window with another window and sending the client's input information using an RDP Virtual Channel. Currently, only sessions from a Windows machine to a Windows machine is supported.
 
-![sample](https://gyazo.com/0f6d3372e463adf95599ca30913edd54.gif)
+![sample](https://gyazo.com/be1c9e2af08539d06cebe4932b4e568d.gif)
 
 ## install
 
