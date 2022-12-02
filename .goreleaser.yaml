@@ -13,7 +13,7 @@ builds:
     goos:
       - windows
   - 
-    id: "ServerAddin"
+    id: "ClientAddin"
     main: ./windows_client/virtualchannel
     binary: RelativeInput
     env:
@@ -39,7 +39,6 @@ archives:
     id: "ServerArchive"
     builds:
       - Server
-      - ServerAddin
     replacements:
       windows: Windows
       amd64: x86_64
@@ -56,6 +55,7 @@ archives:
   - 
     id: "ClientArchive"
     builds:
+      - ClientAddin
       - Client
     replacements:
       windows: Windows
