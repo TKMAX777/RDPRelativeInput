@@ -31,11 +31,12 @@ This program is designed to allow relative input in an RDP session by wrapping a
 
 MinGW installation is required to create add-ins for mstsc.exe.
 
-Run these commands on powershell.
+Clone this repository and run these commands on powershell.
 
 ```powershell
 go build .\cmd\RelativeInputClient
 go build .\cmd\RelativeInputServer
 go build -buildmode=c-shared  -o .\RelativeInput.dll .\windows_client\virtualchanneladdin
-installer\install.bat
+cp installer\install.bat
+install.bat
 ```
