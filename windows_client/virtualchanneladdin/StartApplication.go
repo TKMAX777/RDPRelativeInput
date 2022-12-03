@@ -72,13 +72,14 @@ func StartApplication(rw *VirtualChannelReadWriteCloser, serverName string) {
 				isActive = false
 
 				// stop read stderr routine
+				debug.Debugf("Stop stderr routine...")
 				stderr.Write([]byte("done\n"))
 				<-commandChan
 				close(commandChan)
+				debug.Debugln("ok")
 
 				debug.Debugf("Kill Application...")
 				cmd.Process.Kill()
-
 				<-doneChan
 				debug.Debugln("ok")
 
@@ -90,9 +91,11 @@ func StartApplication(rw *VirtualChannelReadWriteCloser, serverName string) {
 			isActive = false
 
 			// stop read stderr routine
+			debug.Debugf("Stop stderr routine...")
 			stderr.Write([]byte("done\n"))
 			<-commandChan
 			close(commandChan)
+			debug.Debugln("ok")
 
 			return
 		}
