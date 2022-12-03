@@ -27,4 +27,5 @@ RMDIR /s "%ProgramW6432%\RDPRelativeInput" /q
 
 REG DELETE "HKCU\Software\Microsoft\Terminal Server Client\Default\AddIns\RelativeInput" /f
 
-ECHO Uninstall done!
+ECHO done.
+PAUSE
