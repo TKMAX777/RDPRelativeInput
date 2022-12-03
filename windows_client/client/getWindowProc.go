@@ -35,7 +35,6 @@ func (h Handler) getWindowProc(rdClientHwnd win.HWND) func(hwnd win.HWND, uMsg u
 
 	return func(hwnd win.HWND, uMsg uint32, wParam uintptr, lParam uintptr) uintptr {
 		var send = func(evType keymap.EV_TYPE, key uint32, state remote_send.InputType) {
-
 			if key == toggleKey.Value {
 				// toggle window mode
 				switch state {
