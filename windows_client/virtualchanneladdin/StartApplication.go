@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 
 	"github.com/TKMAX777/RDPRelativeInput/debug"
 )
@@ -37,6 +38,9 @@ func StartApplication(rw *VirtualChannelReadWriteCloser, serverName string) {
 
 		for isActive {
 			n, _ := os.Stderr.Read(b)
+			if n == 0 {
+				time.Sleep(200 * time.Millisecond)
+			}
 			res = append(res, b[:n]...)
 			if bytes.Contains(b[:n], []byte{'\n'}) {
 				break
