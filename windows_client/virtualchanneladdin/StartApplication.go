@@ -19,8 +19,8 @@ func StartApplication(rw *VirtualChannelReadWriteCloser, serverName string) {
 	cmd.Stderr = stderr
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x08000000}
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env,
+	cmd.Env = append(
+		os.Environ(),
 		"SERVER_NAME="+serverName,
 	)
 
@@ -29,24 +29,27 @@ func StartApplication(rw *VirtualChannelReadWriteCloser, serverName string) {
 		debug.Debugln("CmdStartError", err)
 	}
 
+	var isActive = true
+
 	var MustReadln = func() string {
 		var b = make([]byte, 1)
 		var res = make([]byte, 0, 100)
 
-		for {
+		for isActive {
 			n, _ := os.Stderr.Read(b)
 			res = append(res, b[:n]...)
 			if bytes.Contains(b[:n], []byte{'\n'}) {
 				break
 			}
 		}
+		if !isActive {
+			return ""
+		}
 
 		res = bytes.TrimSuffix(res, []byte{'\n'})
-
 		return string(res)
 	}
 
-	var isActive = true
 	var commandChan = make(chan string)
 	go func() {
 		for isActive {
@@ -61,24 +64,36 @@ func StartApplication(rw *VirtualChannelReadWriteCloser, serverName string) {
 		close(doneChan)
 	}()
 
-	for {
+	for isActive {
 		select {
 		case command := <-commandChan:
 			switch command {
 			case "CLOSE":
 				isActive = false
+
+				// stop read stderr routine
 				stderr.Write([]byte("done\n"))
+				<-commandChan
+				close(commandChan)
+
 				debug.Debugf("Kill Application...")
 				cmd.Process.Kill()
+
 				<-doneChan
 				debug.Debugln("ok")
-				close(commandChan)
+
 				return
 			default:
 				debug.Debugln("Application: ", command)
 			}
 		case <-doneChan:
+			isActive = false
+
+			// stop read stderr routine
+			stderr.Write([]byte("done\n"))
+			<-commandChan
 			close(commandChan)
+
 			return
 		}
 	}

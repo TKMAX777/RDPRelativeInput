@@ -79,6 +79,7 @@ func ChannelInitEventFn(ppInitHandle *HANDLE, ChannelEvent CHANNEL_INIT_EVENT_TY
 				var line = MustReadln()
 				if line != "RDPRelativeInput" {
 					debug.Debugln(line)
+					time.Sleep(time.Second)
 					continue
 				}
 				debug.Debugln("Run Application")
