@@ -40,3 +40,7 @@ go build -buildmode=c-shared  -o .\RelativeInput.dll .\windows_client\virtualcha
 cp installer\install.bat
 install.bat
 ```
+
+## Copyright
+
+Copyright 2022- tkmax777 and contributors
