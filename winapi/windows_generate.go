@@ -59,6 +59,7 @@ var (
 	procWTSVirtualChannelOpenEx     = modWtsapi32.NewProc("WTSVirtualChannelOpenEx")
 	procWTSVirtualChannelRead       = modWtsapi32.NewProc("WTSVirtualChannelRead")
 	procWTSVirtualChannelWrite      = modWtsapi32.NewProc("WTSVirtualChannelWrite")
+	procCallNextHookEx              = moduser32.NewProc("CallNextHookEx")
 	procClipCursor                  = moduser32.NewProc("ClipCursor")
 	procEnumDesktopWindows          = moduser32.NewProc("EnumDesktopWindows")
 	procFillRect                    = moduser32.NewProc("FillRect")
@@ -68,10 +69,13 @@ var (
 	procInvalidateRect              = moduser32.NewProc("InvalidateRect")
 	procMapVirtualKeyW              = moduser32.NewProc("MapVirtualKeyW")
 	procRegisterClassExW            = moduser32.NewProc("RegisterClassExW")
+	procRegisterHotKey              = moduser32.NewProc("RegisterHotKey")
 	procSetLayeredWindowAttributes  = moduser32.NewProc("SetLayeredWindowAttributes")
 	procSetWindowRgn                = moduser32.NewProc("SetWindowRgn")
 	procSetWindowTextW              = moduser32.NewProc("SetWindowTextW")
+	procSetWindowsHookExW           = moduser32.NewProc("SetWindowsHookExW")
 	procShowCursor                  = moduser32.NewProc("ShowCursor")
+	procUnhookWindowsHookEx         = moduser32.NewProc("UnhookWindowsHookEx")
 	procUpdateLayeredWindow         = moduser32.NewProc("UpdateLayeredWindow")
 )
 
@@ -190,6 +194,12 @@ func wtsVirtualChannelWrite(hChannelHandle uintptr, Buffer uintptr, Length uint3
 	return
 }
 
+func callNextHookEx(hhk HHOOK, nCode int, wParam uintptr, lParam uintptr) (result uintptr) {
+	r0, _, _ := syscall.Syscall6(procCallNextHookEx.Addr(), 4, uintptr(hhk), uintptr(nCode), uintptr(wParam), uintptr(lParam), 0, 0)
+	result = uintptr(r0)
+	return
+}
+
 func clipCursor(rect uintptr) (ok int, err error) {
 	r0, _, e1 := syscall.Syscall(procClipCursor.Addr(), 1, uintptr(rect), 0, 0)
 	ok = int(r0)
@@ -260,6 +270,14 @@ func registerClassEx(windowClass uintptr) (atom uint16, err error) {
 	return
 }
 
+func registerHotKey(hWnd uintptr, id int, fsModifiers uint32, vk uint32) (err error) {
+	r1, _, e1 := syscall.Syscall6(procRegisterHotKey.Addr(), 4, uintptr(hWnd), uintptr(id), uintptr(fsModifiers), uintptr(vk), 0, 0)
+	if r1 == 0 {
+		err = errnoErr(e1)
+	}
+	return
+}
+
 func setLayeredWindowAttributes(hwnd uintptr, color uint32, bAlpha byte, dwFlags uint32) (err error) {
 	r1, _, e1 := syscall.Syscall6(procSetLayeredWindowAttributes.Addr(), 4, uintptr(hwnd), uintptr(color), uintptr(bAlpha), uintptr(dwFlags), 0, 0)
 	if r1 == 0 {
@@ -288,6 +306,15 @@ func setWindowText(hwnd uintptr, lpString *uint16) (err error) {
 	return
 }
 
+func setWindowHookEx(idHook int, lpfn uintptr, hmod uintptr, dwThreadId uint32) (hhk uintptr, err error) {
+	r0, _, e1 := syscall.Syscall6(procSetWindowsHookExW.Addr(), 4, uintptr(idHook), uintptr(lpfn), uintptr(hmod), uintptr(dwThreadId), 0, 0)
+	hhk = uintptr(r0)
+	if hhk == 0 {
+		err = errnoErr(e1)
+	}
+	return
+}
+
 func showCursor(state bool) (counter int) {
 	var _p0 uint32
 	if state {
@@ -295,6 +322,14 @@ func showCursor(state bool) (counter int) {
 	}
 	r0, _, _ := syscall.Syscall(procShowCursor.Addr(), 1, uintptr(_p0), 0, 0)
 	counter = int(r0)
+	return
+}
+
+func unhookWindowsHookEx(hhk uintptr) (err error) {
+	r1, _, e1 := syscall.Syscall(procUnhookWindowsHookEx.Addr(), 1, uintptr(hhk), 0, 0)
+	if r1 == 0 {
+		err = errnoErr(e1)
+	}
 	return
 }
 

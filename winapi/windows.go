@@ -17,6 +17,10 @@ const NULL uintptr = 0
 //sys invalidateRect(hwnd uintptr, rect uintptr, bErase bool) (err error) = user32.InvalidateRect
 //sys mapVirtualKey(uCode uint32, uMapType uint32) (code uint32) = user32.MapVirtualKeyW
 //sys registerClassEx(windowClass uintptr) (atom uint16, err error) = user32.RegisterClassExW
+//sys setWindowHookEx(idHook int, lpfn uintptr,  hmod uintptr, dwThreadId uint32) (hhk uintptr, err error) = user32.SetWindowsHookExW
+//sys unhookWindowsHookEx(hhk uintptr) (err error) = user32.UnhookWindowsHookEx
+//sys callNextHookEx(hhk HHOOK, nCode int,  wParam uintptr, lParam uintptr) (result uintptr) = user32.CallNextHookEx
+//sys registerHotKey(hWnd uintptr, id int, fsModifiers uint32, vk uint32) (err error) = user32.RegisterHotKey
 
 //sys createSolidBrush(color uint32) (hbrush uintptr) = Gdi32.CreateSolidBrush
 //sys createPen(iStyle int, cWidth int, color uint32) (hpen uintptr) = Gdi32.CreatePen
