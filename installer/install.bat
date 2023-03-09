@@ -30,6 +30,7 @@ MKDIR "%ProgramW6432%\RDPRelativeInput"
 REM Install it
 COPY RelativeInputClient.exe "%ProgramW6432%\RDPRelativeInput\RelativeInputClient.exe"
 COPY RelativeInput.dll "%ProgramW6432%\RDPRelativeInput\RelativeInput.dll"
+COPY globalhotkey.dll "%ProgramW6432%\RDPRelativeInput\globalhotkey.dll"
 
 @REM REG ADD "HKCU\Software\Microsoft\Terminal Server Client\Default\AddIns\RelativeInput" 
 REG ADD "HKCU\Software\Microsoft\Terminal Server Client\Default\AddIns\RelativeInput" /f
