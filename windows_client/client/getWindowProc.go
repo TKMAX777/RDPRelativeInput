@@ -33,21 +33,70 @@ func (h Handler) getWindowProc(rdClientHwnd win.HWND) func(hwnd win.HWND, uMsg u
 		toggleKey, _ = keymap.GetWindowsKeyDetailFromEventInput("F8")
 	}
 
+	// var hhk winapi.HHOOK
+
+	// var window win.HWND
+	// var hookfunc = func(code int, wParam uintptr, lParam uintptr) uintptr {
+	// 	var kb winapi.KBDLLHOOKSTRUCT
+
+	// 	switch wParam {
+	// 	case win.WM_KEYDOWN, win.WM_SYSKEYDOWN, win.WM_KEYUP, win.WM_SYSKEYUP:
+	// 		kb = *(*winapi.KBDLLHOOKSTRUCT)(unsafe.Pointer(lParam))
+	// 	default:
+	// 		return winapi.CallNextHookEx(hhk, code, wParam, lParam)
+	// 	}
+
+	// 	if kb.VKCode != toggleKey.Value {
+	// 		return winapi.CallNextHookEx(hhk, code, wParam, lParam)
+	// 	}
+
+	// 	switch wParam {
+	// 	case win.WM_KEYDOWN, win.WM_SYSKEYDOWN:
+	// 		isRelativeMode = !isRelativeMode || h.options.toggleType == ToggleTypeOnce
+	// 	case win.WM_KEYUP, win.WM_SYSKEYUP:
+	// 		if h.options.toggleType == ToggleTypeOnce {
+	// 			isRelativeMode = false
+	// 		}
+	// 	}
+
+	// 	debug.Debugf("Set: isRelativeMode: %t\n", isRelativeMode)
+
+	// 	if isRelativeMode {
+	// 		h.initWindowAndCursor(window, rdClientHwnd)
+	// 		debug.Debugln("Called: initWindowAndCursor")
+	// 	} else {
+	// 		var crectAbs win.RECT
+	// 		if !winapi.GetWindowRect(rdClientHwnd, &crectAbs) {
+	// 			fmt.Fprintf(os.Stderr, "GetWindowRectError")
+	// 		}
+
+	// 		// show window title only
+	// 		if !win.SetWindowPos(window, 0,
+	// 			crectAbs.Left, crectAbs.Top, crectAbs.Right-crectAbs.Left, h.metrics.TitleHeight+h.metrics.FrameWidthY*2,
+	// 			win.SWP_SHOWWINDOW,
+	// 		) {
+	// 			fmt.Fprintf(os.Stderr, "SetWindowPos: failed to set window pos")
+	// 		}
+
+	// 		debug.Debugln("Called: SetWindowPos")
+	// 		winapi.ShowCursor(true)
+	// 		winapi.ClipCursor(nil)
+	// 	}
+	// 	debug.Debugln("ModeChangeDone")
+	// 	return winapi.CallNextHookEx(hhk, code, wParam, lParam)
+	// }
+
 	return func(hwnd win.HWND, uMsg uint32, wParam uintptr, lParam uintptr) uintptr {
 		var send = func(evType keymap.EV_TYPE, key uint32, state remote_send.InputType) {
-			if key == toggleKey.Value {
-				// toggle window mode
-				switch state {
-				case remote_send.KeyDown:
-					isRelativeMode = !isRelativeMode || h.options.toggleType == ToggleTypeOnce
-				case remote_send.KeyUp:
-					if h.options.toggleType == ToggleTypeOnce {
-						isRelativeMode = false
-					}
-				}
+			if isRelativeMode {
+				h.remote.SendInput(evType, key, state)
+			}
+		}
 
-				debug.Debugf("Set: isRelativeMode: %t\n", isRelativeMode)
-
+		// Toggle Mode
+		switch uMsg {
+		case win.WM_KEYDOWN:
+			if lParam>>31&1 == 1 && wParam == uintptr(toggleKey.Value) {
 				if isRelativeMode {
 					h.initWindowAndCursor(hwnd, rdClientHwnd)
 					debug.Debugln("Called: initWindowAndCursor")
@@ -69,22 +118,37 @@ func (h Handler) getWindowProc(rdClientHwnd win.HWND) func(hwnd win.HWND, uMsg u
 					winapi.ShowCursor(true)
 					winapi.ClipCursor(nil)
 				}
-				debug.Debugln("ModeChangeDone")
-			}
-			if isRelativeMode {
-				h.remote.SendInput(evType, key, state)
+				isRelativeMode = !isRelativeMode
+				return winapi.NULL
 			}
 		}
 
+		// Send Input
 		switch uMsg {
 		case win.WM_CREATE:
 			winapi.SetLayeredWindowAttributes(hwnd, 0x0000FF, byte(1), winapi.LWA_COLORKEY)
 			h.initWindowAndCursor(hwnd, rdClientHwnd)
 			win.UpdateWindow(hwnd)
 
+			defer func() {
+				if err := recover(); err != nil {
+					win.MessageBox(hwnd, winapi.MustUTF16PtrFromString(fmt.Sprintln(err)), winapi.MustUTF16PtrFromString("Toggle Hook Error"), win.MB_ICONERROR)
+				}
+			}()
+			// win.MessageBox(hwnd, winapi.MustUTF16PtrFromString(fmt.Sprintln("Call StartHook")), winapi.MustUTF16PtrFromString("Toggle Hook Error"), 0)
+			StartHook.Call(uintptr(hwnd), uintptr(StartHook.Dll.Handle))
+			// win.MessageBox(hwnd, winapi.MustUTF16PtrFromString(fmt.Sprintln("Called")), winapi.MustUTF16PtrFromString("Toggle Hook Error"), 0)
+			// hhk, err = winapi.SetWindowHookEx(winapi.WH_KEYBOARD_LL, winapi.HOOKPROC(hookfunc), win.GetModuleHandle(nil), 0)
+			// if err != nil {
+			// 	win.MessageBox(hwnd, winapi.MustUTF16PtrFromString(err.Error()), winapi.MustUTF16PtrFromString("Toggle Hook Error"), win.MB_ICONERROR)
+			// 	os.Exit(1)
+			// }
+
 			return winapi.NULL
 		case win.WM_DESTROY:
 			os.Stderr.Write([]byte("CLOSE\n"))
+			Unhook.Call()
+			// winapi.UnhookWindowsHookEx(hhk)
 			os.Exit(0)
 			return winapi.NULL
 		case win.WM_PAINT:

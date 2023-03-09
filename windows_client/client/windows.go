@@ -1,7 +1,12 @@
 package client
 
 import (
+	"os"
+	"path/filepath"
+	"syscall"
+
 	"github.com/TKMAX777/RDPRelativeInput/remote_send"
+	"github.com/TKMAX777/RDPRelativeInput/winapi"
 
 	"github.com/lxn/win"
 )
@@ -28,6 +33,21 @@ type SystemMetrics struct {
 	FrameWidthX int32
 	FrameWidthY int32
 	TitleHeight int32
+}
+
+var StartHook *syscall.Proc
+var Unhook *syscall.Proc
+
+func init() {
+	var dllpath = filepath.Join(os.Getenv("ProgramW6432"), "RDPRelativeInput", "globalhotkey.dll")
+
+	globalhotkey, err := syscall.LoadDLL(dllpath)
+	if err != nil {
+		win.MessageBox(0, winapi.MustUTF16PtrFromString(err.Error()), winapi.MustUTF16PtrFromString("Load DLL Error"), 0)
+	}
+
+	StartHook = globalhotkey.MustFindProc("StartHook")
+	Unhook = globalhotkey.MustFindProc("Unhook")
 }
 
 func New(r *remote_send.Handler) *Handler {

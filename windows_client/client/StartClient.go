@@ -41,12 +41,12 @@ func (h Handler) StartClient(rdClientHwnd win.HWND) (win.HWND, error) {
 
 		var className = winapi.MustUTF16PtrFromString(windowName)
 
-		// get window proc
-		var windowProc = h.getWindowProc(rdClientHwnd)
-
 		// lock os thread to avoid hanging GetMessage
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
+
+		// get window proc
+		var windowProc = h.getWindowProc(rdClientHwnd)
 
 		var wClass win.WNDCLASSEX
 		wClass = win.WNDCLASSEX{
