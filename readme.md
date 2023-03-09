@@ -37,6 +37,7 @@ Clone this repository and run these commands on powershell.
 go build .\cmd\RelativeInputClient
 go build .\cmd\RelativeInputServer
 go build -buildmode=c-shared  -o .\RelativeInput.dll .\windows_client\virtualchanneladdin
+go build -buildmode=c-shared  -o .\globalhotkey.dll .\windows_client\globalhotkey
 cp installer\install.bat
 install.bat
 ```
