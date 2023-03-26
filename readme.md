@@ -23,7 +23,7 @@ This program is designed to allow relative input in an RDP session by wrapping a
 3. Enjoy!
 
   ☆ The mouse cursor disappears during relative input mode. If you need the cursor, use the F8 key to switch to absolute input.<br />
-  ☆ To return to relative input mode, select the RDP Input Wrapper window and hit the F8 key again.`<br />`
+  ☆ To return to relative input mode, select the RDP Input Wrapper window and hit the F8 key again.<br />
   ☆ To close this app, hold the F12 key.<br />
   ☆ Administrator privileges are required for operation in some games. In that case, please run RelativeInputServer.exe with Administrator privileges.
 
