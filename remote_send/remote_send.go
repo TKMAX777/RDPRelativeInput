@@ -40,3 +40,7 @@ func (h Handler) SendAbsoluteCursor(x, y int32) {
 func (h Handler) SendInput(eventType keymap.EV_TYPE, keyValue uint32, state InputType) {
 	fmt.Fprintf(h.writer, "%d %d %d %d\n", eventType, keyValue, state, 0)
 }
+
+func (h Handler) SendExit() {
+	fmt.Fprintf(h.writer, "CLOSE\n")
+}
