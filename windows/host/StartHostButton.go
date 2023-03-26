@@ -1,4 +1,4 @@
-package client
+package host
 
 import (
 	"os"
@@ -13,12 +13,7 @@ import (
 )
 
 // Create window on remote desktop client
-// rdClientHwnd must be remote desktop client hwnd, and toggleKey is a keyname for toggle wrapper mode
-func (h Handler) StartClient(rdClientHwnd win.HWND) (win.HWND, error) {
-	if rdClientHwnd == win.HWND(winapi.NULL) {
-		return win.HWND(winapi.NULL), errors.New("NilWindowHandler")
-	}
-
+func (h Handler) StartHostButton() (win.HWND, error) {
 	type resultAttr struct {
 		hwnd win.HWND
 		err  error
@@ -41,9 +36,6 @@ func (h Handler) StartClient(rdClientHwnd win.HWND) (win.HWND, error) {
 
 		var className = winapi.MustUTF16PtrFromString(windowName)
 
-		// get window proc
-		var windowProc = h.getWindowProc(rdClientHwnd)
-
 		// lock os thread to avoid hanging GetMessage
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
@@ -59,7 +51,7 @@ func (h Handler) StartClient(rdClientHwnd win.HWND) (win.HWND, error) {
 			// set window background color to white
 			HbrBackground: win.HBRUSH(win.GetStockObject(win.WHITE_BRUSH)),
 			LpszClassName: className,
-			LpfnWndProc:   syscall.NewCallback(windowProc),
+			LpfnWndProc:   syscall.NewCallback(h.getWindowProc()),
 			LpszMenuName:  nil,
 
 			CbClsExtra: 0,
@@ -81,11 +73,11 @@ func (h Handler) StartClient(rdClientHwnd win.HWND) (win.HWND, error) {
 		var windowNameUTF16 = winapi.MustUTF16PtrFromString(windowName)
 		debug.Debugf("CreateWindowEx...")
 		var hwnd = win.CreateWindowEx(
-			win.WS_EX_OVERLAPPEDWINDOW|win.WS_EX_TOPMOST|win.WS_EX_LAYERED,
+			0,
 			className,
 			windowNameUTF16,
-			win.WS_OVERLAPPEDWINDOW,
-			win.CW_USEDEFAULT, win.CW_USEDEFAULT, int32(100), int32(100),
+			0,
+			50, 50, int32(50), int32(50),
 			win.HWND(winapi.NULL), win.HMENU(winapi.NULL), hInstance, unsafe.Pointer(nil),
 		)
 
@@ -99,6 +91,7 @@ func (h Handler) StartClient(rdClientHwnd win.HWND) (win.HWND, error) {
 		var style uint32 = uint32(win.WS_POPUP | win.WS_BORDER)
 
 		win.SetWindowLong(hwnd, win.GWL_STYLE, *(*int32)(unsafe.Pointer(&style)))
+		win.SetWindowPos(hwnd, 0, 50, 50, 50, 50, 0)
 		winapi.ShowWindow(hwnd, win.SW_SHOW)
 		winapi.UpdateWindow(hwnd)
 

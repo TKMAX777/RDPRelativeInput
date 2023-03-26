@@ -27,14 +27,29 @@ func (h Handler) getWindowProc(rdClientHwnd win.HWND) func(hwnd win.HWND, uMsg u
 	var currentPosition = windowCenterPosition
 	debug.Debugln("ToggleKey: ", h.options.toggleKey)
 	debug.Debugln("ToggleType: ", h.options.toggleType)
+	debug.Debugln("ExitKey: ", h.options.exitKey)
 
 	toggleKey, err := keymap.GetWindowsKeyDetailFromEventInput(h.options.toggleKey)
 	if err != nil {
 		toggleKey, _ = keymap.GetWindowsKeyDetailFromEventInput("F8")
 	}
 
+	exitKey, err := keymap.GetWindowsKeyDetailFromEventInput(h.options.exitKey)
+	if err != nil {
+		exitKey, _ = keymap.GetWindowsKeyDetailFromEventInput("F12")
+	}
+
 	return func(hwnd win.HWND, uMsg uint32, wParam uintptr, lParam uintptr) uintptr {
 		var send = func(evType keymap.EV_TYPE, key uint32, state remote_send.InputType) {
+			if key == exitKey.Value {
+				switch state {
+				case remote_send.KeyDown:
+					win.SetTimer(hwnd, 1, 500, 0)
+				case remote_send.KeyUp:
+					win.KillTimer(hwnd, 1)
+				}
+			}
+
 			if key == toggleKey.Value {
 				// toggle window mode
 				switch state {
@@ -109,6 +124,9 @@ func (h Handler) getWindowProc(rdClientHwnd win.HWND) func(hwnd win.HWND, uMsg u
 				// get remote desktop client center position
 				windowCenterPosition = h.getWindowCenterPos(rect)
 			}
+			return winapi.NULL
+		case win.WM_TIMER:
+			os.Exit(0)
 			return winapi.NULL
 		case win.WM_MOUSEMOVE:
 			if isRelativeMode {

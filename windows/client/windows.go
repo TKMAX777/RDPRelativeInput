@@ -22,6 +22,7 @@ const (
 type option struct {
 	toggleKey  string
 	toggleType ToggleType
+	exitKey    string
 }
 
 type SystemMetrics struct {
@@ -36,6 +37,7 @@ func New(r *remote_send.Handler) *Handler {
 		options: option{
 			// set default options
 			toggleKey:  "F8",
+			exitKey:    "F12",
 			toggleType: ToggleTypeAlive,
 		},
 		metrics: SystemMetrics{
