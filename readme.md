@@ -40,6 +40,12 @@ cp installer\install.bat
 .\install.bat
 ```
 
+## Why this program uses Graphics Capture API?
+
+This program uses Graphics Capture API on the host computer side.
+
+In a remote desktop connection, the cursor on the host side is normally not displayed. However, the GraphicsCaptureAPI allows the cursor to be displayed, so this program creates a button window of turning this function on and off and captures the window.
+
 ## Copyright
 
 Copyright 2022- tkmax777 and contributors

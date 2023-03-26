@@ -10,7 +10,7 @@ builds:
       - CGO_ENABLED=0
     goos:
       - windows
-    flags: -H=windowsgui
+    ldflags: -H=windowsgui
   - 
     id: "ClientAddin"
     main: ./windows/virtualchanneladdin
@@ -34,7 +34,7 @@ builds:
       - amd64
     goos:
       - windows
-    flags: -H=windowsgui
+    ldflags: -H=windowsgui
 archives:
   - 
     id: "ServerArchive"
