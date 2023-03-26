@@ -45,7 +45,7 @@ cp installer\install.bat
 
 This program uses Graphics Capture API on the host computer side.
 
-In a remote desktop connection, the cursor on the host side is normally not displayed. However, the GraphicsCaptureAPI allows the cursor to be displayed, so this program creates a button window of turning this function on and off and captures the window.
+In a remote desktop connection, the cursor on the host side is normally not displayed. However, the GraphicsCaptureAPI allows the cursor to be displayed, so this program creates a button which can turn this feature on and off and captures that window.
 
 ## Copyright
 
