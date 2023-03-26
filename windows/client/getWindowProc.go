@@ -99,7 +99,7 @@ func (h Handler) getWindowProc(rdClientHwnd win.HWND) func(hwnd win.HWND, uMsg u
 
 			return winapi.NULL
 		case win.WM_DESTROY:
-			os.Stderr.Write([]byte("CLOSE\n"))
+			h.remote.SendExit()
 			os.Exit(0)
 			return winapi.NULL
 		case win.WM_PAINT:
@@ -126,6 +126,7 @@ func (h Handler) getWindowProc(rdClientHwnd win.HWND) func(hwnd win.HWND, uMsg u
 			}
 			return winapi.NULL
 		case win.WM_TIMER:
+			h.remote.SendExit()
 			os.Exit(0)
 			return winapi.NULL
 		case win.WM_MOUSEMOVE:

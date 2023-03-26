@@ -8,8 +8,7 @@ import (
 	"github.com/lxn/win"
 )
 
-func (h Handler) getWindowProc() func(hwnd win.HWND, uMsg uint32, wParam uintptr, lParam uintptr) uintptr {
-
+func (h *Handler) getWindowProc() func(hwnd win.HWND, uMsg uint32, wParam uintptr, lParam uintptr) uintptr {
 	return func(hwnd win.HWND, uMsg uint32, wParam uintptr, lParam uintptr) uintptr {
 		switch uMsg {
 		case win.WM_CREATE:
@@ -18,9 +17,9 @@ func (h Handler) getWindowProc() func(hwnd win.HWND, uMsg uint32, wParam uintptr
 				0, 0, 50, 50,
 				hwnd, 1, win.GetModuleHandle(nil), nil)
 			win.UpdateWindow(hwnd)
+
 			return winapi.NULL
 		case win.WM_DESTROY:
-			os.Stderr.Write([]byte("CLOSE\n"))
 			os.Exit(0)
 			return winapi.NULL
 		case win.WM_COMMAND:

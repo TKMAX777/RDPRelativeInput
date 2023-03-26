@@ -6,6 +6,7 @@ package host
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -98,6 +99,10 @@ restart:
 
 	for {
 		text := MustReadln()
+
+		if text == "CLOSE" {
+			os.Exit(0)
+		}
 
 		var augs = strings.Split(text, " ")
 		if len(augs) < 4 {

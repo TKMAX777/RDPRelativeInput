@@ -1,6 +1,7 @@
 package host
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"syscall"
@@ -13,7 +14,7 @@ import (
 )
 
 // Create window on remote desktop client
-func (h Handler) StartHostButton() (win.HWND, error) {
+func (h *Handler) StartHostButton() (win.HWND, error) {
 	type resultAttr struct {
 		hwnd win.HWND
 		err  error
@@ -94,6 +95,13 @@ func (h Handler) StartHostButton() (win.HWND, error) {
 		win.SetWindowPos(hwnd, 0, 50, 50, 50, 50, 0)
 		winapi.ShowWindow(hwnd, win.SW_SHOW)
 		winapi.UpdateWindow(hwnd)
+
+		h.captureHandler = &CaptureHandler{}
+		err := h.captureHandler.StartCapture(hwnd)
+		if err != nil {
+			fmt.Println(err)
+		}
+		h.isCapturing = true
 
 		result <- resultAttr{hwnd, nil}
 
