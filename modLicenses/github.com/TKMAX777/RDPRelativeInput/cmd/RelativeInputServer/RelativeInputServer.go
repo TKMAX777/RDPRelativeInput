@@ -1,7 +1,7 @@
 package main
 
-import relative_input "github.com/TKMAX777/RDPRelativeInput"
+import "github.com/TKMAX777/RDPRelativeInput/windows/host"
 
 func main() {
-	relative_input.StartServer()
+	host.StartServer()
 }

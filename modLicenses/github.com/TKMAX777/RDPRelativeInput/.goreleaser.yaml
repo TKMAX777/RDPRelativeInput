@@ -8,38 +8,38 @@ builds:
     binary: RelativeInputServer
     env:
       - CGO_ENABLED=0
-    goarch:
-      - amd64
     goos:
       - windows
+    ldflags: -H=windowsgui
   - 
-    id: "ServerAddin"
-    main: ./windows_client/virtualchannel
+    id: "ClientAddin"
+    main: ./windows/virtualchanneladdin
     binary: RelativeInput
     env:
       - CGO_ENABLED=1
       - CC=x86_64-w64-mingw32-gcc
       - CXX=x86_64-w64-mingw32-g++
-    goos:
-      - windows
     goarch:
       - amd64
+    goos:
+      - windows
     buildmode: "c-shared" 
-    flags: -buildmode=c-shared
   - 
     id: "Client"
     main: ./cmd/RelativeInputClient
     binary: RelativeInputClient
     env:
       - CGO_ENABLED=0
+    goarch:
+      - amd64
     goos:
       - windows
+    ldflags: -H=windowsgui
 archives:
   - 
     id: "ServerArchive"
     builds:
       - Server
-      - ServerAddin
     replacements:
       windows: Windows
       amd64: x86_64
@@ -48,12 +48,12 @@ archives:
       - goos: windows
         format: zip
     files: 
-      - dependLicenses/*
+      - modLicenses/**/*
       - LICENSE
-      - installer/*
   - 
     id: "ClientArchive"
     builds:
+      - ClientAddin
       - Client
     replacements:
       windows: Windows
@@ -65,6 +65,9 @@ archives:
     files: 
       - modLicenses/**/*
       - LICENSE
+      - src: 'installer/*.bat'
+        dst: .
+        strip_parent: true
 checksum:
   name_template: 'checksums.txt'
 snapshot:

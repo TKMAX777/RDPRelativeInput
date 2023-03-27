@@ -1,7 +1,7 @@
 package main
 
-import relative_input "github.com/TKMAX777/RDPRelativeInput"
+import "github.com/TKMAX777/RDPRelativeInput/windows/client"
 
 func main() {
-	relative_input.StartClient()
+	client.StartClient()
 }

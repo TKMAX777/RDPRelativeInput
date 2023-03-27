@@ -1,0 +1,90 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - 
+    id: "Server"
+    main: ./cmd/RelativeInputServer
+    binary: RelativeInputServer
+    env:
+      - CGO_ENABLED=0
+    goarch:
+      - amd64
+    goos:
+      - windows
+  - 
+    id: "ServerAddin"
+    main: ./windows_client/virtualchannel
+    binary: RelativeInput
+    env:
+      - CGO_ENABLED=1
+      - CC=x86_64-w64-mingw32-gcc
+      - CXX=x86_64-w64-mingw32-g++
+    goos:
+      - windows
+    goarch:
+      - amd64
+    buildmode: "c-shared" 
+    flags: -buildmode=c-shared
+  - 
+    id: "Client"
+    main: ./cmd/RelativeInputClient
+    binary: RelativeInputClient
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+archives:
+  - 
+    id: "ServerArchive"
+    builds:
+      - Server
+      - ServerAddin
+    replacements:
+      windows: Windows
+      amd64: x86_64
+    name_template: "Server_{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files: 
+      - dependLicenses/*
+      - LICENSE
+      - installer/*
+  - 
+    id: "ClientArchive"
+    builds:
+      - Client
+    replacements:
+      windows: Windows
+      amd64: x86_64
+    name_template: "Client_{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files: 
+      - modLicenses/**/*
+      - LICENSE
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+release:
+  draft: false
+
+  prerelease: auto
+
+  mode: append
+
+  header: |
+    ## Update ({{ .Date }})
+  footer: |
+    Those were the changes on {{ .Tag }}!
+  name_template: "{{.ProjectName}}-v{{.Version}}"
+  

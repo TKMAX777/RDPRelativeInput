@@ -35,4 +35,5 @@ COPY RelativeInput.dll "%ProgramW6432%\RDPRelativeInput\RelativeInput.dll"
 REG ADD "HKCU\Software\Microsoft\Terminal Server Client\Default\AddIns\RelativeInput" /f
 REG ADD "HKCU\Software\Microsoft\Terminal Server Client\Default\AddIns\RelativeInput" /v Name /t REG_SZ /f /d "%ProgramW6432%\RDPRelativeInput\RelativeInput.dll"
 
-ECHO Install done!
+ECHO done.
+PAUSE
