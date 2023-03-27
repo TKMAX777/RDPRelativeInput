@@ -23,13 +23,14 @@ type Direct3D11CaptureFramePool struct {
 type Direct3D11CaptureFramePoolVtbl struct {
 	ole.IUnknownVtbl
 	Invoke  uintptr
-	counter int
+	counter *int
 }
 
 func NewDirect3D11CaptureFramePool(invoke winrt.Direct3D11CaptureFramePoolFrameArrivedProcType) *Direct3D11CaptureFramePool {
+	var counter = 1
 	var v = &Direct3D11CaptureFramePoolVtbl{
 		Invoke:  syscall.NewCallback(invoke),
-		counter: 0,
+		counter: &counter,
 	}
 
 	var newV = new(Direct3D11CaptureFramePool)
@@ -84,7 +85,7 @@ func (v *Direct3D11CaptureFramePool) queryInterface(lpMyObj *uintptr, riid *uint
 
 	// Convert
 	switch id.String() {
-	case ole.IID_IUnknown.String(), winrt.ITypedEventHandlerID.String():
+	case ole.IID_IUnknown.String(), winrt.ITypedEventHandlerID.String(), winrt.IAgileObjectID.String():
 		V.AddRef()
 		*lppvObj = (*uintptr)(unsafe.Pointer(V))
 
@@ -101,9 +102,9 @@ func (v *Direct3D11CaptureFramePool) addRef(lpMyObj *uintptr) uintptr {
 	}
 
 	var V = (*Direct3D11CaptureFramePool)(unsafe.Pointer(lpMyObj))
-	V.VTable().counter++
+	*V.VTable().counter++
 
-	return uintptr(V.VTable().counter)
+	return uintptr(*V.VTable().counter)
 }
 
 func (v *Direct3D11CaptureFramePool) release(lpMyObj *uintptr) uintptr {
@@ -113,15 +114,17 @@ func (v *Direct3D11CaptureFramePool) release(lpMyObj *uintptr) uintptr {
 	}
 
 	var V = (*Direct3D11CaptureFramePool)(unsafe.Pointer(lpMyObj))
-	V.VTable().counter--
+	*V.VTable().counter--
 
-	if V.VTable().counter == 0 {
+	if *V.VTable().counter == 0 {
+		V.RawVTable = nil
 		_, ok := generatedDirect3D11CaptureFramePool[uintptr(unsafe.Pointer(lpMyObj))]
 		if ok {
 			delete(generatedDirect3D11CaptureFramePool, uintptr(unsafe.Pointer(lpMyObj)))
 			runtime.GC()
 		}
+		return 0
 	}
 
-	return uintptr(V.VTable().counter)
+	return uintptr(*V.VTable().counter)
 }

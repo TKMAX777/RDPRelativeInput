@@ -1,9 +1,9 @@
 package host
 
 import (
-	"fmt"
 	"os"
 	"runtime"
+	"time"
 	"unsafe"
 
 	"github.com/TKMAX777/RDPRelativeInput/winapi/dx11"
@@ -20,6 +20,7 @@ type CaptureHandler struct {
 	framePool              *winrt.IDirect3D11CaptureFramePool
 	graphicsCaptureSession *winrt.IGraphicsCaptureSession
 	framePoolToken         *winrt.EventRegistrationToken
+	isRunning              bool
 }
 
 func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
@@ -60,6 +61,7 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 			result <- resultAttr{errors.Wrap(err, "D3DCreateDevice")}
 			return
 		}
+		defer c.deviceDx.Release()
 
 		// Query interface of DXGIDevice
 		var dxgiDevice *dx11.IDXGIDevice
@@ -77,6 +79,7 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 			result <- resultAttr{errors.Wrap(err, "CreateDirect3D11DeviceFromDXGIDevice")}
 			return
 		}
+		defer deviceRT.Release()
 
 		// Query interface of IDirect3DDevice
 		err = deviceRT.PutQueryInterface(winrt.IDirect3DDeviceID, &c.device)
@@ -84,6 +87,7 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 			result <- resultAttr{errors.Wrap(err, "QueryInterface: IDirect3DDeviceID")}
 			return
 		}
+		defer c.device.Release()
 
 		// Create Capture Settings
 		factory, err := ole.RoGetActivationFactory(winrt.GraphicsCaptureItemClass, winrt.IGraphicsCaptureItemInteropID)
@@ -91,6 +95,7 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 			result <- resultAttr{errors.Wrap(err, "RoGetActivationFactory: IGraphicsCaptureItemID")}
 			return
 		}
+		defer factory.Release()
 
 		var interop *winrt.IGraphicsCaptureItemInterop
 		err = factory.PutQueryInterface(winrt.IGraphicsCaptureItemInteropID, &interop)
@@ -98,6 +103,7 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 			result <- resultAttr{errors.Wrap(err, "QueryInterface: IGraphicsCaptureItemInteropID")}
 			return
 		}
+		defer interop.Release()
 
 		var captureItemDispatch *ole.IInspectable
 
@@ -131,15 +137,16 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 		defer ins.Release()
 
 		// Get Interface of Direct3D11CaptureFramePoolClass
-		var framePoolStatic *winrt.IDirect3D11CaptureFramePoolStatics
-		err = ins.PutQueryInterface(winrt.IDirect3D11CaptureFramePoolStaticsID, &framePoolStatic)
+		var framePoolStatic *winrt.IDirect3D11CaptureFramePoolStatics2
+		err = ins.PutQueryInterface(winrt.IDirect3D11CaptureFramePoolStatics2ID, &framePoolStatic)
 		if err != nil {
 			result <- resultAttr{errors.Wrap(err, "PutQueryInterface: IDirect3D11CaptureFramePoolStaticsID")}
 			return
 		}
+		defer framePoolStatic.Release()
 
 		// Create frame pool
-		c.framePool, err = framePoolStatic.Create(c.device, winrt.DirectXPixelFormat_B8G8R8A8UIntNormalized, 1, size)
+		c.framePool, err = framePoolStatic.CreateFreeThreaded(c.device, winrt.DirectXPixelFormat_B8G8R8A8UIntNormalized, 1, size)
 		if err != nil {
 			result <- resultAttr{errors.Wrap(err, "CreateFramePool")}
 			return
@@ -153,12 +160,14 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 			result <- resultAttr{errors.Wrap(err, "AddFrameArrived")}
 			return
 		}
+		defer eventObject.Release()
 
 		c.graphicsCaptureSession, err = c.framePool.CreateCaptureSession(c.graphicsCaptureItem)
 		if err != nil {
 			result <- resultAttr{errors.Wrap(err, "CreateCaptureSession")}
 			return
 		}
+		defer c.graphicsCaptureSession.Release()
 
 		// Start capturing
 		err = c.graphicsCaptureSession.StartCapture()
@@ -168,24 +177,15 @@ func (c *CaptureHandler) StartCapture(hwnd win.HWND) error {
 		}
 		result <- resultAttr{nil}
 
-		for {
-			var msg win.MSG
-			switch win.GetMessage(&msg, 0, 0, 0) {
-			case 0:
-				fmt.Println("EXIT")
-				return
-			case -1:
-				fmt.Println("ERROR")
-				os.Exit(0)
-				return
-			default:
-				win.TranslateMessage(&msg)
-				win.DispatchMessage(&msg)
-			}
+		c.isRunning = true
+
+		for c.isRunning {
+			time.Sleep(time.Second)
 		}
 	}()
 
 	var res = <-result
+	close(result)
 
 	return res.err
 }
@@ -203,6 +203,10 @@ func (c *CaptureHandler) onFrameArrived(this_ *uintptr, sender *winrt.IDirect3D1
 }
 
 func (c *CaptureHandler) Close() error {
+	if !c.isRunning {
+		return nil
+	}
+
 	if c.framePool != nil {
 		err := c.framePool.RemoveFrameArrived(c.framePoolToken)
 		if err != nil {
@@ -231,6 +235,7 @@ func (c *CaptureHandler) Close() error {
 	closable.Close()
 
 	c.graphicsCaptureItem = nil
+	c.isRunning = false
 
 	return nil
 }
