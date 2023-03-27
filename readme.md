@@ -24,8 +24,10 @@ This program is designed to allow relative input in an RDP session by wrapping a
 
   ☆ If you need client cursor, use the F8 key to switch to absolute input.<br />
   ☆ To return to relative input mode, select the RDP Input Wrapper window and hit the F8 key again.<br />
-  ☆ To close this app, hold the F12 key.<br />
-  ☆ Administrator privileges are required for operation in some games. In that case, please run RelativeInputServer.exe with Administrator privileges.
+  ☆ If you are using a keyboard setting other than the US keyboard setting, the response speed may be significantly reduced due to the IME.<br />
+      In this case, please add the US keyboard from the Windows settings.<br />
+      `Settings -> Time and Language -> Add Language -> English (US) -> Language Options -> Add Keyboard`
+
 
 ## Build
 
