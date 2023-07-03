@@ -26,8 +26,8 @@ This program is designed to allow relative input in an RDP session by wrapping a
   ☆ To return to relative input mode, select the RDP Input Wrapper window and hit the F8 key again.<br />
   ☆ If you are using a keyboard setting other than the US keyboard setting on the client machine, the response speed may be significantly reduced due to the IME.<br />
       In this case, please add the US keyboard from the Windows settings.<br />
-      `Settings -> Time and Language -> Add Language -> English (US) -> Language Options -> Add Keyboard`
-
+      `Settings -> Time and Language -> Add Language -> English (US) -> Language Options -> Add Keyboard`<br />
+  ☆ When you want to quit this program, please press and hold F12.
 
 ## Build
 
