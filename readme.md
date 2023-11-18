@@ -43,7 +43,7 @@ cp installer\install.bat
 .\install.bat
 ```
 
-## Why this program uses Graphics Capture API?
+## Why does this program use Graphics Capture API?
 
 This program uses Graphics Capture API on the host computer side.
 
