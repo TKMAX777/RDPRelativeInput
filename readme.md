@@ -49,6 +49,10 @@ This program uses Graphics Capture API on the host computer side.
 
 In a remote desktop connection, the cursor on the host side is normally not displayed. However, the GraphicsCaptureAPI allows the cursor to be displayed, so this program creates a button which can turn this feature on and off and captures that window.
 
+## Known issues
+
+- Windows Defender misidentifies the DLL as a Trojan horse program. (https://github.com/TKMAX777/RDPRelativeInput/issues/2)
+
 ## Copyright
 
 Copyright 2022- tkmax777 and contributors
