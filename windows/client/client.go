@@ -13,6 +13,7 @@ import (
 	"github.com/TKMAX777/RDPRelativeInput/debug"
 	"github.com/TKMAX777/RDPRelativeInput/remote_send"
 	"github.com/TKMAX777/RDPRelativeInput/winapi"
+	windowselecter "github.com/TKMAX777/RDPRelativeInput/windows/client/window_selecter"
 	"github.com/lxn/win"
 )
 
@@ -71,9 +72,14 @@ func StartClient() {
 	for {
 		rdHwnd = winapi.FindWindowEx(0, rdHwnd, winapi.MustUTF16PtrFromString("TscShellContainerClass"), nil)
 		if rdHwnd == 0 {
-			win.MessageBox(0, winapi.MustUTF16PtrFromString("Could not find window"), winapi.MustUTF16PtrFromString("RDP Relative Input"), win.MB_ICONERROR)
-			debug.Debugln("Window not found error")
-			return
+			var err error
+			rdHwnd, err = windowselecter.Dialog()
+			if err != nil {
+				win.MessageBox(0, winapi.MustUTF16PtrFromString("Could not open window selecter"), winapi.MustUTF16PtrFromString("RDP Relative Input"), win.MB_ICONERROR)
+				debug.Debugln("Window Selecter Error: ", err)
+				return
+			}
+			break
 		}
 		var name = winapi.GetWindowTextString(rdHwnd)
 		if strings.Contains(name, os.Getenv("SERVER_NAME")) {
