@@ -1,6 +1,7 @@
 package winapi
 
 import (
+	"syscall"
 	"unsafe"
 
 	"github.com/lxn/win"
@@ -24,6 +25,15 @@ func ClipCursor(rect *win.RECT) (ok int, err error) {
 		return clipCursor(NULL)
 	}
 	return clipCursor(uintptr(unsafe.Pointer(&rect.Left)))
+}
+
+type Dlgproc func(win.HWND, uint32, uintptr, uintptr) uintptr
+
+var procDialogBoxParam = moduser32.NewProc("DialogBoxParamW")
+
+func DialogBoxParam(hInstance win.HINSTANCE, lpTemplateName *uint16, hWndParent win.HWND, lpDialogFunc Dlgproc, dwInitParam uintptr) (uintptr, error) {
+	r1, _, err := procDialogBoxParam.Call(uintptr(hInstance), uintptr(unsafe.Pointer(lpTemplateName)), uintptr(hWndParent), syscall.NewCallback(lpDialogFunc))
+	return r1, err
 }
 
 func EnumDesktopWindows(hDesktop win.HANDLE, lpEnumFunc uintptr, lParam uintptr) error {
@@ -52,6 +62,13 @@ func GetWindowText(hwnd win.HWND, lpString []uint16, nMax int) (length int) {
 
 func InvalidateRect(hwnd win.HWND, rect win.RECT, bErase bool) error {
 	return invalidateRect(uintptr(hwnd), uintptr(unsafe.Pointer(&rect.Left)), bErase)
+}
+
+var procIsWindowVisible = moduser32.NewProc("IsWindowVisible")
+
+func IsWindowVisible(hwnd win.HWND) bool {
+	r1, _, _ := procIsWindowVisible.Call(uintptr(hwnd))
+	return r1 != 0
 }
 
 func SetLayeredWindowAttributes(hwnd win.HWND, color uint32, bAlpha byte, dwFlags uint32) error {
