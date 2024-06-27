@@ -2,7 +2,6 @@ package windowselecter
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -17,6 +16,8 @@ type WindowInfo struct {
 	Hwnd        win.HWND
 	WindowTitle string
 }
+
+var ErrorQuitted = fmt.Errorf("Quitted")
 
 const dialogBaseXPos = 10
 const dialogBaseYPos = 10
@@ -114,11 +115,10 @@ func Dialog() (win.HWND, error) {
 			var msg win.MSG
 			switch win.GetMessage(&msg, hwnd, 0, 0) {
 			case 0:
-				debug.Debugln("Quit")
+				indexChannel <- -2
 				return
 			case -1:
-				os.Stderr.Write([]byte("CLOSE\n"))
-				os.Exit(0)
+				indexChannel <- -2
 				return
 			}
 
@@ -135,70 +135,9 @@ func Dialog() (win.HWND, error) {
 	}
 
 	var index = <-indexChannel
+	if index < 0 {
+		return 0, ErrorQuitted
+	}
 
 	return windows[index].Hwnd, nil
-}
-
-func newEnumWindowProc(windows *[]WindowInfo) func(hwnd win.HWND, lParam *uintptr) uintptr {
-	return func(hwnd win.HWND, lParam *uintptr) uintptr {
-		if !win.IsWindowVisible(hwnd) {
-			return 1
-		}
-		var title = winapi.GetWindowTextString(hwnd)
-		if title == "" {
-			return 1
-		}
-
-		*windows = append(*windows, WindowInfo{hwnd, title})
-
-		return 1
-	}
-}
-
-func makeNewWindowProc(windows []WindowInfo, indexChannel chan int) winapi.Dlgproc {
-	var hListBox win.HWND
-	var ps win.PAINTSTRUCT
-
-	return func(hwnd win.HWND, uMsg uint32, wParam uintptr, lParam uintptr) uintptr {
-		switch uMsg {
-		case win.WM_PAINT:
-			hdc := win.BeginPaint(hwnd, &ps)
-			const windowText = "Please select the target window..."
-			win.TextOut(hdc, dialogBaseXPos, dialogBaseYPos, winapi.MustUTF16PtrFromString(windowText), int32(len(windowText)))
-			win.EndPaint(hwnd, &ps)
-		case win.WM_CREATE:
-			var ycoordinate int32 = dialogBaseYPos + 20
-			var height = int32(float32(dialogHeight-win.GetSystemMetrics(win.SM_CYCAPTION))*0.9) - 30
-
-			hListBox = win.CreateWindowEx(
-				win.WS_EX_CLIENTEDGE,
-				winapi.MustUTF16PtrFromString("LISTBOX"),
-				nil,
-				win.WS_CHILD|win.WS_VISIBLE|win.WS_VSCROLL|win.ES_AUTOVSCROLL|win.LBS_NOTIFY,
-				dialogBaseXPos, ycoordinate, dialogWidth*0.9, height,
-				hwnd, 1, win.GetModuleHandle(nil),
-				nil,
-			)
-
-			ycoordinate += height - 10
-
-			for _, w := range windows {
-				win.SendMessage(hListBox, win.LB_ADDSTRING, 0, uintptr(unsafe.Pointer(winapi.MustUTF16PtrFromString(w.WindowTitle))))
-			}
-
-			win.CreateWindowEx(0, winapi.MustUTF16PtrFromString("BUTTON"), winapi.MustUTF16PtrFromString("OK"),
-				win.WS_CHILD|win.WS_VISIBLE|win.BS_FLAT,
-				dialogBaseXPos, ycoordinate, dialogWidth*0.9, 20,
-				hwnd, 2, win.GetModuleHandle(nil), nil)
-			win.UpdateWindow(hwnd)
-		case win.WM_COMMAND:
-			switch win.LOWORD(uint32(wParam)) {
-			// case win.LBN_SELCHANGE:
-			case 2:
-				indexChannel <- int(win.SendMessage(hListBox, win.LB_GETCURSEL, 0, 0))
-				win.DestroyWindow(hwnd)
-			}
-		}
-		return win.DefWindowProc(hwnd, uMsg, wParam, lParam)
-	}
 }

@@ -74,6 +74,9 @@ func StartClient() {
 		if rdHwnd == 0 {
 			var err error
 			rdHwnd, err = windowselecter.Dialog()
+			if err == windowselecter.ErrorQuitted {
+				return
+			}
 			if err != nil {
 				win.MessageBox(0, winapi.MustUTF16PtrFromString("Could not open window selecter"), winapi.MustUTF16PtrFromString("RDP Relative Input"), win.MB_ICONERROR)
 				debug.Debugln("Window Selecter Error: ", err)
