@@ -4,17 +4,15 @@
 package host
 
 import (
-	"bytes"
 	"fmt"
-	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"unsafe"
 
 	relative_input "github.com/TKMAX777/RDPRelativeInput"
 	"github.com/TKMAX777/RDPRelativeInput/debug"
 	"github.com/TKMAX777/RDPRelativeInput/keymap"
+	"github.com/TKMAX777/RDPRelativeInput/protocol"
 	"github.com/TKMAX777/RDPRelativeInput/remote_send"
 	"github.com/TKMAX777/RDPRelativeInput/winapi"
 	"github.com/lxn/win"
@@ -40,28 +38,15 @@ func StartServer() {
 
 	debug.Debugln("ok")
 
-	var MustReadln = func() string {
-		var b = make([]byte, 1600)
-		var res = make([]byte, 0, 100)
-
-		for {
-			n, _ := rw.Read(b)
-			res = append(res, b[:n]...)
-			if bytes.Contains(b[:n], []byte{'\n'}) {
-				break
-			}
-		}
-
-		res = bytes.TrimSuffix(res, []byte{'\n'})
-
-		return string(res)
-	}
+	reader := protocol.NewReader(rw)
 
 	// Header
 	debug.Debugf("SendHeaders...")
 
-	fmt.Fprintln(rw, "RDPRelativeInput")
-	fmt.Fprintf(rw, "ProtocolVersion:%d\n", relative_input.PROTOCOL_VERSION)
+	if _, err := fmt.Fprintf(rw, "RDPRelativeInput\nProtocolVersion:%d\n", relative_input.PROTOCOL_VERSION); err != nil {
+		debug.Debugln("Send headers:", err)
+		return
+	}
 
 	debug.Debugln("ok")
 
@@ -69,13 +54,21 @@ func StartServer() {
 
 restart:
 	// Response
-	var line = MustReadln()
+	line, err := reader.ReadLine()
+	if err != nil {
+		debug.Debugln("Read header:", err)
+		return
+	}
 	if line != "RDPRelativeInput" {
 		fmt.Println("Get: ", line)
 		goto restart
 	}
 
-	line = MustReadln()
+	line, err = reader.ReadLine()
+	if err != nil {
+		debug.Debugln("Read status:", err)
+		return
+	}
 	if !strings.HasPrefix(line, "Status:") {
 		debug.Debugln("error!")
 		fmt.Println("Client respond with illigal format: ", line)
@@ -92,39 +85,24 @@ restart:
 	debug.Debugln("ok")
 
 	var handler = New()
-	handler.StartHostButton()
+	if _, err := handler.StartHostButton(); err != nil {
+		debug.Debugln("Start host button:", err)
+		return
+	}
 
 	debug.Debugln("Start Connection")
 	fmt.Println("Start Connection")
 
 	for {
-		text := MustReadln()
-
-		if text == "CLOSE" {
-			os.Exit(0)
-		}
-
-		var augs = strings.Split(text, " ")
-		if len(augs) < 4 {
-			continue
-		}
-
-		eventType, err := strconv.ParseUint(augs[0], 10, 32)
+		event, err := reader.ReadEvent()
 		if err != nil {
-			continue
+			if err != protocol.ErrClosed {
+				debug.Debugln("Read event:", err)
+			}
+			return
 		}
-		eventInput, err := strconv.ParseUint(augs[1], 10, 32)
-		if err != nil {
-			continue
-		}
-		eventValue1, err := strconv.ParseInt(augs[2], 10, 32)
-		if err != nil {
-			continue
-		}
-		eventValue2, err := strconv.ParseInt(augs[3], 10, 32)
-		if err != nil {
-			continue
-		}
+		eventType, eventInput := event.Type, event.Input
+		eventValue1, eventValue2 := event.Value1, event.Value2
 
 		switch keymap.EV_TYPE(eventType) {
 		case keymap.EV_TYPE_MOUSE_MOVE:
@@ -232,33 +210,13 @@ restart:
 					DwFlags: win.MOUSEEVENTF_WHEEL,
 				},
 			}
-			switch uint32(eventValue1) {
-			case uint32(remote_send.KeyDown):
-				mouseInput.Mi.MouseData = ^uint32(120) + 1
-				debug.Debugln("SendInput: MouseMiddleDown")
-			case uint32(remote_send.KeyUp):
-				mouseInput.Mi.MouseData = 120
-				debug.Debugln("SendInput: MouseMiddleUp")
-			}
+			mouseInput.Mi.MouseData = eventInput
 
 			win.SendInput(1, unsafe.Pointer(&mouseInput), int32(unsafe.Sizeof(win.MOUSE_INPUT{})))
 
 		case keymap.EV_TYPE_KEY:
-			var mappedKey = winapi.MapVirtualKey(uint32(eventInput), winapi.MAPVK_VK_TO_VSC)
-
-			var keyInput = win.KEYBD_INPUT{
-				Type: win.INPUT_KEYBOARD,
-				Ki: win.KEYBDINPUT{
-					WScan: uint16(mappedKey),
-				},
-			}
-
-			switch uint32(eventValue1) {
-			case uint32(remote_send.KeyDown):
-				keyInput.Ki.DwFlags = win.KEYEVENTF_SCANCODE
-				win.SendInput(1, unsafe.Pointer(&keyInput), int32(unsafe.Sizeof(win.KEYBD_INPUT{})))
-			case uint32(remote_send.KeyUp):
-				keyInput.Ki.DwFlags = win.KEYEVENTF_KEYUP | win.KEYEVENTF_SCANCODE
+			keyInput, ok := makeKeyboardInput(eventInput, remote_send.InputType(eventValue1))
+			if ok {
 				win.SendInput(1, unsafe.Pointer(&keyInput), int32(unsafe.Sizeof(win.KEYBD_INPUT{})))
 			}
 		}

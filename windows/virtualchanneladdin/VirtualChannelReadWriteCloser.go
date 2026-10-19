@@ -1,111 +1,108 @@
 package main
 
 import (
-	"bytes"
+	"io"
+	"sync"
 	"unsafe"
 
-	"github.com/TKMAX777/RDPRelativeInput/debug"
-	"github.com/TKMAX777/RDPRelativeInput/winapi"
-	"github.com/lxn/win"
-	"github.com/pkg/errors"
+	"github.com/TKMAX777/RDPRelativeInput/internal/channelbuffer"
 )
 import "C"
 
-const RWBufferSize = 1e3
+type pendingWrite struct {
+	data []byte
+	done chan bool
+}
 
 type VirtualChannelReadWriteCloser struct {
 	channelHandle uint32
 	entryPoints   CHANNEL_ENTRY_POINTS
-
-	recievedBuffer *bytes.Buffer
-
-	lastWriteMessageID uint32
-	chanWriteComplete  map[uint32]chan bool
+	received      *channelbuffer.Buffer
+	writeMu       sync.Mutex
+	mu            sync.Mutex
+	nextID        uintptr
+	pending       map[uintptr]*pendingWrite
+	closeOnce     sync.Once
+	closeErr      error
 }
 
-type RWTaskType int
-
-type RWRecievedDataAttributes struct {
-	Data []byte
-}
-
-func NewChannel(entryPoints CHANNEL_ENTRY_POINTS, ppInitHandle *HANDLE, ChannelName string) (*VirtualChannelReadWriteCloser, error) {
-	var rw = &VirtualChannelReadWriteCloser{
-		chanWriteComplete: make(map[uint32]chan bool),
-		recievedBuffer:    new(bytes.Buffer),
-		entryPoints:       entryPoints,
-	}
-
-	err := entryPoints.VirtualChannelOpen.Call(ppInitHandle, &rw.channelHandle, ChannelName, rw.getVirtualChannelOpenEventFn())
-	if err != nil {
-		err = errors.Wrap(err, "VirtualChannelOpen")
+func NewChannel(entryPoints CHANNEL_ENTRY_POINTS, ppInitHandle *HANDLE, name string) (*VirtualChannelReadWriteCloser, error) {
+	rw := &VirtualChannelReadWriteCloser{entryPoints: entryPoints, received: channelbuffer.New(), pending: make(map[uintptr]*pendingWrite)}
+	if err := entryPoints.VirtualChannelOpen.Call(ppInitHandle, &rw.channelHandle, name, rw.getVirtualChannelOpenEventFn()); err != nil {
+		rw.received.Fail(err)
 		return nil, err
 	}
-
 	return rw, nil
 }
-
-func (rw *VirtualChannelReadWriteCloser) Write(b []byte) (n int, err error) {
-	var messageID = rw.lastWriteMessageID
-	rw.lastWriteMessageID = (rw.lastWriteMessageID + 1) % 0xffff
-
-	rw.chanWriteComplete[messageID] = make(chan bool)
-
-	err = rw.entryPoints.VirtualChannelWrite.Call(rw.channelHandle, b, len(b), uintptr(messageID))
+func (rw *VirtualChannelReadWriteCloser) Read(p []byte) (int, error) { return rw.received.Read(p) }
+func (rw *VirtualChannelReadWriteCloser) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if len(p) > 32*1024 {
+		return 0, io.ErrShortBuffer
+	}
+	rw.writeMu.Lock()
+	defer rw.writeMu.Unlock()
+	select {
+	case <-rw.received.Context().Done():
+		return 0, io.ErrClosedPipe
+	default:
+	}
+	// Own the data until the native completion/cancellation notification. Closing
+	// wakes the writer but must not release memory still in use by RDP.
+	w := &pendingWrite{data: append([]byte(nil), p...), done: make(chan bool, 1)}
+	rw.mu.Lock()
+	rw.nextID++
+	id := rw.nextID
+	rw.pending[id] = w
+	rw.mu.Unlock()
+	err := rw.entryPoints.VirtualChannelWrite.Call(rw.channelHandle, w.data, len(w.data), id)
 	if err != nil {
-		delete(rw.chanWriteComplete, messageID)
-		return 0, errors.Wrap(err, "VirtualChannelWrite")
+		rw.complete(id, false)
+		return 0, err
 	}
-
-	if !<-rw.chanWriteComplete[messageID] {
-		return 0, errors.New("Client Cancelled")
+	select {
+	case ok := <-w.done:
+		if !ok {
+			return 0, io.ErrClosedPipe
+		}
+		return len(p), nil
+	case <-rw.received.Context().Done():
+		return 0, io.ErrClosedPipe
 	}
-
-	return len(b), nil
 }
-
-func (rw *VirtualChannelReadWriteCloser) Read(b []byte) (n int, err error) {
-	return rw.recievedBuffer.Read(b)
+func (rw *VirtualChannelReadWriteCloser) complete(id uintptr, ok bool) {
+	rw.mu.Lock()
+	w := rw.pending[id]
+	delete(rw.pending, id)
+	rw.mu.Unlock()
+	if w != nil {
+		w.done <- ok
+	}
 }
-
 func (rw *VirtualChannelReadWriteCloser) Close() error {
-	return rw.entryPoints.VirtualChannelClose.Call(rw.channelHandle)
+	rw.received.Fail(io.EOF)
+	rw.closeOnce.Do(func() { rw.closeErr = rw.entryPoints.VirtualChannelClose.Call(rw.channelHandle) })
+	return rw.closeErr
 }
-
 func (rw *VirtualChannelReadWriteCloser) getVirtualChannelOpenEventFn() CHANNEL_OPEN_EVENT_FN {
-	var buffer []byte
-
-	var eventFunction CHANNEL_OPEN_EVENT_FN = func(openHandle uint32, event CHANNEL_EVENT_TYPE, pData *byte, dataLength uint32, totalLength uint32, dataFlags CHANNEL_FLAG_TYPE) uintptr {
-		defer func() {
-			var rec = recover()
-			if rec != nil {
-				err := errors.Errorf("Panic: virtualChannelOpenEventFn: %v", rec)
-				debug.Debugln(err)
-				win.MessageBox(win.HWND(winapi.NULL), winapi.MustUTF16PtrFromString(err.Error()), winapi.MustUTF16PtrFromString("Relative Input"), win.MB_ICONERROR|win.MB_OK)
-			}
-		}()
-
+	return func(_ uint32, event CHANNEL_EVENT_TYPE, pData *byte, length, total uint32, flags CHANNEL_FLAG_TYPE) uintptr {
 		switch event {
 		case CHANNEL_EVENT_DATA_RECEIVED:
-			buffer = unsafe.Slice(pData, dataLength)
-			rw.recievedBuffer.Write(buffer)
-			// switch dataFlags {
-			// case CHANNEL_FLAG_ONLY:
-			// 	rw.recievedBuffer.Write(buffer)
-			// case CHANNEL_FLAG_FIRST:
-			// 	rw.recievedBuffer.Write(buffer)
-			// case CHANNEL_FLAG_LAST:
-			// 	rw.recievedBuffer.Write(buffer)
-			// case CHANNEL_FLAG_MIDDLE:
-			// 	rw.recievedBuffer.Write(buffer)
-			// }
+			if flags&(CHANNEL_FLAG_SUSPEND|CHANNEL_FLAG_RESUME) != 0 {
+				return 0
+			}
+			if length > channelbuffer.Capacity || total > channelbuffer.Capacity || length > total || (length > 0 && pData == nil) {
+				rw.received.Fail(channelbuffer.ErrOverflow)
+				return 0
+			}
+			_, _ = rw.received.Write(unsafe.Slice(pData, int(length)))
 		case CHANNEL_EVENT_WRITE_CANCELLED:
-			rw.chanWriteComplete[uint32(uintptr(unsafe.Pointer(pData)))] <- false
+			rw.complete(uintptr(unsafe.Pointer(pData)), false)
 		case CHANNEL_EVENT_WRITE_COMPLETE:
-			rw.chanWriteComplete[uint32(uintptr(unsafe.Pointer(pData)))] <- true
+			rw.complete(uintptr(unsafe.Pointer(pData)), true)
 		}
 		return 0
 	}
-
-	return eventFunction
 }

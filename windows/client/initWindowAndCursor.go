@@ -24,27 +24,26 @@ func (h Handler) initWindowAndCursor(hwnd, rdClientHwnd win.HWND) error {
 		return errors.New("SetWindowPos: failed to set window pos")
 	}
 
-	// get remote desktop client rect
-	var rect win.RECT
-	if !winapi.GetWindowRect(rdClientHwnd, &rect) {
-		return errors.New("GetWindowRectError")
-	}
-
-	// get remote desktop client center position
-	var windowCenterPosition = h.getWindowCenterPos(rect)
-
-	// set cursot to center of the remote desktop client window
-	if !win.SetCursorPos(windowCenterPosition.X, windowCenterPosition.Y) {
-		return errors.New("Error in set cursor position")
-	}
-
-	// then clip cursor
-	_, err := winapi.ClipCursor(&rect)
-	if err != nil {
-		return errors.Errorf("Error in clip cursor: code: %d\n", err)
+	if err := h.clipRelativeCursor(rdClientHwnd); err != nil {
+		return err
 	}
 
 	winapi.ShowCursor(false)
 
+	return nil
+}
+
+// Raw motion keeps reporting device deltas while the OS cursor is stationary.
+// Keep the cursor in the wrapper client area without warping it for each event.
+func (h Handler) clipRelativeCursor(rdClientHwnd win.HWND) error {
+	var rect win.RECT
+	if !winapi.GetWindowRect(rdClientHwnd, &rect) {
+		return errors.New("GetWindowRect failed")
+	}
+	center := h.getWindowCenterPos(rect)
+	clip := win.RECT{Left: center.X, Top: center.Y, Right: center.X + 1, Bottom: center.Y + 1}
+	if _, err := winapi.ClipCursor(&clip); err != nil {
+		return err
+	}
 	return nil
 }

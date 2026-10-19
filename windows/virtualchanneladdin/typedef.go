@@ -71,7 +71,10 @@ func (p *PVIRTUALCHANNELINIT) Call(ppInitHandle *HANDLE, pChannel []CHANNEL_DEF,
 type PVIRTUALCHANNELOPEN uintptr
 
 func (p *PVIRTUALCHANNELOPEN) Call(pInitHandle *HANDLE, pOpenHandle *uint32, pChannelName string, pChannelOpenEventProc CHANNEL_OPEN_EVENT_FN) error {
-	var name = []byte(pChannelName)
+	name, err := syscall.ByteSliceFromString(pChannelName)
+	if err != nil || pChannelName == "" {
+		return syscall.EINVAL
+	}
 
 	r1, _, _ := syscall.SyscallN(uintptr(unsafe.Pointer(p)), uintptr(unsafe.Pointer(pInitHandle)), uintptr(unsafe.Pointer(pOpenHandle)), uintptr(unsafe.Pointer(&name[0])), syscall.NewCallback(pChannelOpenEventProc))
 	if r1 != 0 {

@@ -1,3 +1,6 @@
 *.dll
 *.h
 *.exe
+/dist/
+RELEASE_NOTES.md
+/RELEASING.md

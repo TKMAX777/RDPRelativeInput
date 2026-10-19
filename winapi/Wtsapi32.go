@@ -95,6 +95,7 @@ func WTSEnumerateSessionsEx(hServer win.HANDLE, pLevel *uint32, Filter uint32) (
 	if err != nil {
 		return nil, errors.Wrap(err, "wtsEnumerateSessionsEx")
 	}
+	defer WTSFreeMemoryExW(WTSTypeSessionInfoLevel1, uintptr(unsafe.Pointer(*sessions)), int(pCount))
 
 	ppSessionInfo = make([]WTS_SESSION_INFO_1, pCount)
 
@@ -118,12 +119,25 @@ func WTSEnumerateSessionsEx(hServer win.HANDLE, pLevel *uint32, Filter uint32) (
 }
 
 func WTSVirtualChannelOpenEx(SessionId uint32, pVirtualName string, flags WTS_CHANNEL_OPTION_DYNAMIC) (handle win.HANDLE, err error) {
-	name := []byte(pVirtualName)
+	if pVirtualName == "" {
+		return 0, syscall.EINVAL
+	}
+	name, err := syscall.ByteSliceFromString(pVirtualName)
+	if err != nil {
+		return 0, err
+	}
 	h, err := wtsVirtualChannelOpenEx(SessionId, &name[0], uint32(flags))
 	return win.HANDLE(h), err
 }
 
 func WTSVirtualChannelWrite(hChannelHandle win.HANDLE, Buffer []byte, Length int, pBytesWritten *uint32) (err error) {
+	if pBytesWritten == nil {
+		return syscall.EINVAL
+	}
+	*pBytesWritten = 0
+	if Length < 0 || Length > len(Buffer) || uint64(Length) > uint64(^uint32(0)) {
+		return syscall.EINVAL
+	}
 	if Length == 0 {
 		return nil
 	}
@@ -131,6 +145,13 @@ func WTSVirtualChannelWrite(hChannelHandle win.HANDLE, Buffer []byte, Length int
 }
 
 func WTSVirtualChannelRead(hChannelHandle win.HANDLE, TimeOut uint32, Buffer []byte, BufferSize int, pBytesRead *uint32) (err error) {
+	if pBytesRead == nil {
+		return syscall.EINVAL
+	}
+	*pBytesRead = 0
+	if BufferSize < 0 || BufferSize > len(Buffer) || uint64(BufferSize) > uint64(^uint32(0)) {
+		return syscall.EINVAL
+	}
 	if BufferSize == 0 {
 		return nil
 	}

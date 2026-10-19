@@ -1,8 +1,10 @@
 package host
 
+import "github.com/lxn/win"
+
 type Handler struct {
-	isCapturing    bool
-	captureHandler *CaptureHandler
+	overlay *cursorOverlay
+	button  win.HWND
 }
 
 func New() *Handler {

@@ -1,31 +1,24 @@
-@REM @echo off
-
-REM Check if this session has administrative privileges.
-
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-
-if '%errorlevel%' NEQ '0' (
-    echo Requesting administrative privileges...
-    goto UACPrompt
-) else ( goto gotAdmin )
-
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
-    set params = %*:"="
-    echo UAC.ShellExecute "cmd.exe", "/c %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs"
-
-    "%temp%\getadmin.vbs"
-    del "%temp%\getadmin.vbs"
-    exit /B
-
+@echo off
+setlocal
+REM Require explicit administrator execution; never execute a temporary script.
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 1 }"
+if errorlevel 1 (
+    echo Right-click this file and select Run as administrator.
+    pause
+    exit /b 1
+)
+if not defined ProgramW6432 exit /b 1
 :gotAdmin
     pushd "%CD%"
     CD /D "%~dp0"
 
 REM Start uninstalling
-RMDIR /s "%ProgramW6432%\RDPRelativeInput" /q
+REM Delete only known files. Preserve unrelated files in this directory.
+DEL /F "%ProgramW6432%\RDPRelativeInput\RelativeInputClient.exe"
+DEL /F "%ProgramW6432%\RDPRelativeInput\RelativeInput.dll"
+RMDIR "%ProgramW6432%\RDPRelativeInput"
 
-REG DELETE "HKCU\Software\Microsoft\Terminal Server Client\Default\AddIns\RelativeInput" /f
+"%SystemRoot%\System32\reg.exe" DELETE "HKCU\Software\Microsoft\Terminal Server Client\Default\AddIns\RelativeInput" /f
 
 ECHO done.
 PAUSE

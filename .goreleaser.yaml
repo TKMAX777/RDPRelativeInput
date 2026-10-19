@@ -1,30 +1,37 @@
+version: 2
+project_name: RDPRelativeInput
+
 before:
   hooks:
     - go mod tidy
 builds:
-  - 
+  -
     id: "Server"
     main: ./cmd/RelativeInputServer
     binary: RelativeInputServer
     env:
       - CGO_ENABLED=0
+    goarch:
+      - amd64
+      - arm64
     goos:
       - windows
     ldflags: -H=windowsgui
-  - 
+  -
     id: "ClientAddin"
     main: ./windows/virtualchanneladdin
     binary: RelativeInput
     env:
       - CGO_ENABLED=1
-      - CC=x86_64-w64-mingw32-gcc
-      - CXX=x86_64-w64-mingw32-g++
+      - 'CC={{ if eq .Arch "arm64" }}aarch64-w64-mingw32-clang{{ else }}x86_64-w64-mingw32-gcc{{ end }}'
+      - 'CXX={{ if eq .Arch "arm64" }}aarch64-w64-mingw32-clang++{{ else }}x86_64-w64-mingw32-g++{{ end }}'
     goarch:
       - amd64
+      - arm64
     goos:
       - windows
-    buildmode: "c-shared" 
-  - 
+    buildmode: "c-shared"
+  -
     id: "Client"
     main: ./cmd/RelativeInputClient
     binary: RelativeInputClient
@@ -32,46 +39,41 @@ builds:
       - CGO_ENABLED=0
     goarch:
       - amd64
+      - arm64
     goos:
       - windows
     ldflags: -H=windowsgui
 archives:
-  - 
+  -
     id: "ServerArchive"
-    builds:
+    ids:
       - Server
-    replacements:
-      windows: Windows
-      amd64: x86_64
-    name_template: "Server_{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
-    files: 
+    name_template: 'Server_{{ .ProjectName }}_Windows_{{ if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}'
+    formats: [zip]
+    files:
       - modLicenses/**/*
       - LICENSE
-  - 
+      - readme.md
+      - PROTOCOL.md
+  -
     id: "ClientArchive"
-    builds:
+    ids:
       - ClientAddin
       - Client
-    replacements:
-      windows: Windows
-      amd64: x86_64
-    name_template: "Client_{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
-    files: 
+    name_template: 'Client_{{ .ProjectName }}_Windows_{{ if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}'
+    formats: [zip]
+    files:
       - modLicenses/**/*
       - LICENSE
+      - readme.md
+      - PROTOCOL.md
       - src: 'installer/*.bat'
         dst: .
         strip_parent: true
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:
@@ -90,4 +92,4 @@ release:
   footer: |
     Those were the changes on {{ .Tag }}!
   name_template: "{{.ProjectName}}-v{{.Version}}"
-  
+

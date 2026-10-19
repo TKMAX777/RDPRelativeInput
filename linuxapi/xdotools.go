@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -26,9 +25,11 @@ func NewXdotool(display string) *XdotoolHandler {
 }
 
 func (x XdotoolHandler) exec(event string, value ...string) string {
-	var cmd = exec.Command("/bin/bash", "-c",
-		fmt.Sprintf("xdotool %s %s", event, strings.Join(value, " ")),
-	)
+	cmd, err := x.command(event, value...)
+	if err != nil {
+		return ""
+	}
+
 	cmd.Env = append(os.Environ(), "DISPLAY="+x.display)
 
 	var eout = new(bytes.Buffer)
@@ -37,7 +38,7 @@ func (x XdotoolHandler) exec(event string, value ...string) string {
 	cmd.Stderr = eout
 	cmd.Stdout = sout
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to input: %s", err.Error())
 	}
@@ -93,9 +94,9 @@ func (x XdotoolHandler) GetWindowGeometry() (width, height int) {
 }
 
 func (x XdotoolHandler) KeyDown(key string) {
-	x.exec("keydown", key)
+	x.exec("keydown", "--", key)
 }
 
 func (x XdotoolHandler) KeyUp(key string) {
-	x.exec("keyup", key)
+	x.exec("keyup", "--", key)
 }

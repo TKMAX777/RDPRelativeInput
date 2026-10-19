@@ -1,103 +1,78 @@
 package main
 
 import (
-	"bytes"
-	"io"
-	"runtime"
-	"time"
-	"unsafe"
+	"fmt"
+	"sync"
 
+	relative_input "github.com/TKMAX777/RDPRelativeInput"
 	"github.com/TKMAX777/RDPRelativeInput/debug"
-	"github.com/TKMAX777/RDPRelativeInput/winapi"
-	"github.com/lxn/win"
-	"github.com/pkg/errors"
+	"github.com/TKMAX777/RDPRelativeInput/protocol"
 )
 import "C"
 
-// var OpenChannel uint32
-var OpenChannel *VirtualChannelReadWriteCloser
-var ServerName string
+var connections = struct {
+	sync.Mutex
+	channels map[*HANDLE]*VirtualChannelReadWriteCloser
+}{channels: make(map[*HANDLE]*VirtualChannelReadWriteCloser)}
 
-func ChannelInitEventFn(ppInitHandle *HANDLE, ChannelEvent CHANNEL_INIT_EVENT_TYPE, data *byte, dataLength uint32) uintptr {
-	defer func() {
-		var rec = recover()
-		if rec != nil {
-			err := errors.Errorf("Panic: ChannelInitEventFn: %v", rec)
-			win.MessageBox(win.HWND(winapi.NULL), winapi.MustUTF16PtrFromString(err.Error()), winapi.MustUTF16PtrFromString("Relative Input"), win.MB_ICONERROR|win.MB_OK)
-			debug.Debugln(err)
-		}
-	}()
-
-	switch ChannelEvent {
+func ChannelInitEventFn(handle *HANDLE, event CHANNEL_INIT_EVENT_TYPE, _ *byte, _ uint32) uintptr {
+	switch event {
 	case CHANNEL_EVENT_INITIALIZED:
-		debug.Debugln("INITALIZED")
+		debug.Debugln("INITIALIZED")
 	case CHANNEL_EVENT_CONNECTED:
-		ServerName = winapi.UTF16PtrToString((*uint16)(unsafe.Pointer(data)))
-		debug.Debugf("Server: %s\n", ServerName)
-
-		var err error
-		OpenChannel, err = NewChannel(EntryPoints, ppInitHandle, CHANNEL_NAME)
+		rw, err := NewChannel(EntryPoints, handle, CHANNEL_NAME)
 		if err != nil {
-			err = errors.Wrap(err, "VirtualChannelOpen")
-			debug.Debugln(err.Error())
-			win.MessageBox(win.HWND(winapi.NULL), winapi.MustUTF16PtrFromString(err.Error()), winapi.MustUTF16PtrFromString("Relative Input"), win.MB_ICONERROR|win.MB_OK)
+			debug.Debugln("Open channel:", err)
 			return 0
 		}
-		debug.Debugln("Channel Opened")
-
-		var MustReadln = func() string {
-			var b = make([]byte, 1)
-			var res = make([]byte, 0, 100)
-			// var err error
-
-			for {
-				n, err := OpenChannel.Read(b)
-				if err != nil && err != io.EOF {
-					debug.Debugln("READ ERROR: ", err)
-				}
-				if err == io.EOF {
-					time.Sleep(time.Second)
-				}
-				if bytes.Contains(b[:n], []byte{'\n'}) {
-					break
-				}
-
-				res = append(res, b[:n]...)
-			}
-
-			res = bytes.TrimSuffix(res, []byte{'\n'})
-
-			return string(res)
+		connections.Lock()
+		old := connections.channels[handle]
+		connections.channels[handle] = rw
+		connections.Unlock()
+		if old != nil {
+			old.received.Fail(fmt.Errorf("connection replaced"))
 		}
-
-		go func() {
-			// get a server header
-			debug.Debugln("Scan started")
-
-			// Request from server
-			for {
-				var line = MustReadln()
-				if line != "RDPRelativeInput" {
-					debug.Debugln(line)
-					time.Sleep(time.Second)
-					continue
-				}
-				debug.Debugln("Run Application")
-				StartApplication(OpenChannel, ServerName)
-				debug.Debugln("==== CLIENT Application CLOSED ====")
-			}
-		}()
-	case CHANNEL_EVENT_V1_CONNECTED:
-		err := errors.Errorf("Non-Windows2000TerminalServerError")
-		debug.Debugln(err.Error())
-	case CHANNEL_EVENT_REMOTE_CONTROL_START:
-		debug.Debugln("Start Remote Session")
-	case CHANNEL_EVENT_DISCONNECTED:
-		debug.Debugln("CHANNEL_EVENT_DISCONNECTED")
-	case CHANNEL_EVENT_TERMINATED:
-		debug.Debugln("Terminated Remote Session")
-		runtime.GC()
+		debug.Debugln("Channel Opened")
+		go serveChannel(rw)
+	case CHANNEL_EVENT_DISCONNECTED, CHANNEL_EVENT_TERMINATED:
+		connections.Lock()
+		rw := connections.channels[handle]
+		delete(connections.channels, handle)
+		connections.Unlock()
+		if rw != nil {
+			rw.received.Fail(fmt.Errorf("connection disconnected"))
+		}
 	}
-
 	return 0
+}
+
+func serveChannel(rw *VirtualChannelReadWriteCloser) {
+	defer rw.Close()
+	// Closing the channel cancels a partial handshake as well as a running child.
+	reader := protocol.NewReader(rw)
+	for {
+		header, err := reader.ReadLine()
+		if err != nil {
+			debug.Debugln("Read header:", err)
+			return
+		}
+		if header != "RDPRelativeInput" {
+			debug.Debugln("Invalid channel header")
+			return
+		}
+		version, err := reader.ReadLine()
+		if err != nil {
+			debug.Debugln("Read version:", err)
+			return
+		}
+		if version != fmt.Sprintf("ProtocolVersion:%d", relative_input.PROTOCOL_VERSION) {
+			_, _ = rw.Write([]byte("RDPRelativeInput\nStatus:INVALID_PROTOCOL_VERSION\n"))
+			return
+		}
+		debug.Debugln("Run Application")
+		if err := StartApplication(rw, version); err != nil {
+			debug.Debugln("Client application:", err)
+			return
+		}
+	}
 }

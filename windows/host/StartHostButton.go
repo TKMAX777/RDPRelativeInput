@@ -1,7 +1,6 @@
 package host
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"syscall"
@@ -40,6 +39,8 @@ func (h *Handler) StartHostButton() (win.HWND, error) {
 		// lock os thread to avoid hanging GetMessage
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
+		restoreDPI := usePhysicalCursorCoordinates()
+		defer restoreDPI()
 
 		var wClass win.WNDCLASSEX
 		wClass = win.WNDCLASSEX{
@@ -71,6 +72,15 @@ func (h *Handler) StartHostButton() (win.HWND, error) {
 		}
 		debug.Debugln("ok")
 
+		var err error
+		h.overlay, err = newCursorOverlay()
+		if err != nil {
+			// Fail before creating the control window.
+			result <- resultAttr{0, err}
+			return
+		}
+		defer h.overlay.close()
+
 		var windowNameUTF16 = winapi.MustUTF16PtrFromString(windowName)
 		debug.Debugf("CreateWindowEx...")
 		var hwnd = win.CreateWindowEx(
@@ -78,7 +88,7 @@ func (h *Handler) StartHostButton() (win.HWND, error) {
 			className,
 			windowNameUTF16,
 			0,
-			50, 50, int32(50), int32(50),
+			50, 50, int32(180), int32(40),
 			win.HWND(winapi.NULL), win.HMENU(winapi.NULL), hInstance, unsafe.Pointer(nil),
 		)
 
@@ -92,22 +102,15 @@ func (h *Handler) StartHostButton() (win.HWND, error) {
 		var style uint32 = uint32(win.WS_POPUP | win.WS_BORDER)
 
 		win.SetWindowLong(hwnd, win.GWL_STYLE, *(*int32)(unsafe.Pointer(&style)))
-		win.SetWindowPos(hwnd, 0, 50, 50, 50, 50, 0)
-		winapi.ShowWindow(hwnd, win.SW_SHOW)
+		win.SetWindowPos(hwnd, 0, 50, 50, 180, 40, win.SWP_NOACTIVATE)
+		winapi.ShowWindow(hwnd, win.SW_SHOWNOACTIVATE)
 		winapi.UpdateWindow(hwnd)
-
-		h.captureHandler = &CaptureHandler{}
-		err := h.captureHandler.StartCapture(hwnd)
-		if err != nil {
-			fmt.Println(err)
-		}
-		h.isCapturing = true
 
 		result <- resultAttr{hwnd, nil}
 
 		for {
 			var msg win.MSG
-			switch win.GetMessage(&msg, hwnd, 0, 0) {
+			switch win.GetMessage(&msg, 0, 0, 0) {
 			case 0:
 				debug.Debugln("Quit")
 				return
